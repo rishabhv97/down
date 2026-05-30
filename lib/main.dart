@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Add this import
 import 'screens/main_screen.dart';
+import 'providers/download_provider.dart'; // Add this import
 
 void main() {
-  runApp(const DownloaderApp());
+  runApp(
+    // Wrap the app in a MultiProvider
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => DownloadProvider()),
+      ],
+      child: const DownloaderApp(),
+    ),
+  );
 }
 
 class DownloaderApp extends StatelessWidget {
@@ -14,7 +24,7 @@ class DownloaderApp extends StatelessWidget {
       title: 'Downloader',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        fontFamily: 'Inter', // Or whichever clean sans-serif font you prefer
+        fontFamily: 'Inter', 
         brightness: Brightness.dark,
       ),
       home: const MainScreen(),
