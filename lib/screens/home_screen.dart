@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/download_provider.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final TextEditingController _urlController = TextEditingController();
+  HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,21 +18,29 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 32),
             _buildInputSection(context),
             const SizedBox(height: 32),
-            
+
             // --- Popular Platforms ---
             const Text(
-              'Popular Platforms', 
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              'Popular Platforms',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 16),
             _buildPopularPlatforms(),
-            
+
             const SizedBox(height: 32),
-            
+
             // --- Quick Tools ---
             const Text(
-              'Quick Tools', 
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              'Quick Tools',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 16),
             _buildQuickTools(),
@@ -112,10 +121,11 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(width: 12),
           const Icon(Icons.link, color: Colors.grey),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: TextField(
-              style: TextStyle(color: Colors.white),
-              decoration: InputDecoration(
+              controller: _urlController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
                 hintText: 'Paste link here...',
                 hintStyle: TextStyle(color: Colors.grey),
                 border: InputBorder.none,
@@ -132,13 +142,24 @@ class HomeScreen extends StatelessWidget {
             ),
             child: ElevatedButton(
               onPressed: () {
-                // Triggers the mock download!
-                context.read<DownloadProvider>().startNewDownload('instagram.com/reel/123');
+                final url = _urlController.text.trim();
+                print("--- DEBUG: Button Pressed! ---");
+                print("--- DEBUG: URL is: '$url' ---");
+
+                if (url.isNotEmpty) {
+                  context.read<DownloadProvider>().startNewDownload(url);
+                  _urlController.clear();
+                } else {
+                  print("--- DEBUG: The URL was empty! ---");
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -173,20 +194,20 @@ class HomeScreen extends StatelessWidget {
     ];
 
     return GridView.builder(
-      shrinkWrap: true, 
-      physics: const NeverScrollableScrollPhysics(), 
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 5,
         crossAxisSpacing: 12,
         mainAxisSpacing: 16,
-        childAspectRatio: 0.75, 
+        childAspectRatio: 0.75,
       ),
       itemCount: platforms.length,
       itemBuilder: (context, index) {
         final platform = platforms[index];
-        
+
         if (platform.containsKey('isMore')) {
-           return Column(
+          return Column(
             children: [
               Container(
                 height: 50,
@@ -195,10 +216,17 @@ class HomeScreen extends StatelessWidget {
                   color: const Color(0xFF1E212B),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.grid_view_rounded, color: Colors.grey, size: 24),
+                child: const Icon(
+                  Icons.grid_view_rounded,
+                  color: Colors.grey,
+                  size: 24,
+                ),
               ),
               const SizedBox(height: 8),
-              const Text('More', style: TextStyle(color: Colors.grey, fontSize: 11)),
+              const Text(
+                'More',
+                style: TextStyle(color: Colors.grey, fontSize: 11),
+              ),
             ],
           );
         }
@@ -209,7 +237,7 @@ class HomeScreen extends StatelessWidget {
               height: 50,
               width: 50,
               decoration: BoxDecoration(
-                color: Colors.transparent, 
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: ClipRRect(
@@ -217,8 +245,8 @@ class HomeScreen extends StatelessWidget {
                 child: Image.asset(
                   platform['asset'] as String,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => 
-                    const Icon(Icons.broken_image, color: Colors.grey),
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.broken_image, color: Colors.grey),
                 ),
               ),
             ),
@@ -237,13 +265,28 @@ class HomeScreen extends StatelessWidget {
   // --- QUICK TOOLS WIDGET ---
   Widget _buildQuickTools() {
     final tools = [
-      {'title': 'Batch Download', 'desc': 'Multiple files', 'icon': Icons.library_add_check, 'color': Colors.orange},
-      {'title': 'Extract Audio', 'desc': 'MP4 to MP3', 'icon': Icons.audiotrack, 'color': Colors.purple},
-      {'title': 'Private Video', 'desc': 'Requires login', 'icon': Icons.lock, 'color': Colors.teal},
+      {
+        'title': 'Batch Download',
+        'desc': 'Multiple files',
+        'icon': Icons.library_add_check,
+        'color': Colors.orange,
+      },
+      {
+        'title': 'Extract Audio',
+        'desc': 'MP4 to MP3',
+        'icon': Icons.audiotrack,
+        'color': Colors.purple,
+      },
+      {
+        'title': 'Private Video',
+        'desc': 'Requires login',
+        'icon': Icons.lock,
+        'color': Colors.teal,
+      },
     ];
 
     return SizedBox(
-      height: 120, 
+      height: 120,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: tools.length,
@@ -268,12 +311,20 @@ class HomeScreen extends StatelessWidget {
                     color: (tool['color'] as Color).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(tool['icon'] as IconData, color: tool['color'] as Color, size: 24),
+                  child: Icon(
+                    tool['icon'] as IconData,
+                    color: tool['color'] as Color,
+                    size: 24,
+                  ),
                 ),
                 const Spacer(),
                 Text(
                   tool['title'] as String,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -300,50 +351,64 @@ class HomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Active Downloads', 
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              'Active Downloads',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: 16),
-            ...provider.activeDownloads.map((item) => Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E212B),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.05)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.title, 
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
+            ...provider.activeDownloads.map(
+              (item) => Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E212B),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.grey.withValues(alpha: 0.05),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${(item.progress * 100).toInt()}%', 
-                        style: const TextStyle(color: Color(0xFF7C3AED), fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // The actual progress bar
-                  LinearProgressIndicator(
-                    value: item.progress,
-                    backgroundColor: Colors.grey.withValues(alpha: 0.1),
-                    color: const Color(0xFF7C3AED),
-                    minHeight: 6,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ],
+                        const SizedBox(width: 8),
+                        Text(
+                          '${(item.progress * 100).toInt()}%',
+                          style: const TextStyle(
+                            color: Color(0xFF7C3AED),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // The actual progress bar
+                    LinearProgressIndicator(
+                      value: item.progress,
+                      backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                      color: const Color(0xFF7C3AED),
+                      minHeight: 6,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ],
+                ),
               ),
-            )),
+            ),
           ],
         );
       },

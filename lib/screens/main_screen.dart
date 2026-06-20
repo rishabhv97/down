@@ -13,7 +13,7 @@ class _MainScreenState extends State<MainScreen> {
 
   // The _screens list now actually points to your newly built HomeScreen.
   final List<Widget> _screens = [
-    const HomeScreen(), // <-- Updated: Replaced placeholder with your actual screen
+    HomeScreen(), // <-- Updated: Replaced placeholder with your actual screen
     const Center(child: Text('Downloads List', style: TextStyle(color: Colors.white))),
     const Center(child: Text('Browser', style: TextStyle(color: Colors.white))),
     const Center(child: Text('Files', style: TextStyle(color: Colors.white))),
