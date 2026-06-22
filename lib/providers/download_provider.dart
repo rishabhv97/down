@@ -10,12 +10,28 @@ class DownloadProvider extends ChangeNotifier {
   final List<DownloadItem> _activeDownloads = [];
   final Dio _dio = Dio();
   
-  // YOUR NEW VERCEL URL GOES HERE!
-  final String _apiUrl = 'https://downloader-api-murex.vercel.app/api/extract';
+  // URL for your new local Node.js backend
+  // Use 10.0.2.2 for Android Emulator, or your computer's local IP (e.g., 192.168.x.x) for physical devices
+  final String _backendUrl = 'http://192.168.0.121:3000';
 
   List<DownloadItem> get activeDownloads => _activeDownloads;
 
-  Future<void> startNewDownload(String originalUrl) async {
+  // NEW METHOD: Fetch video info without downloading
+  Future<Map<String, dynamic>?> getVideoInfo(String url) async {
+    try {
+      final response = await _dio.post(
+        '$_backendUrl/info',
+        data: {'url': url},
+      );
+      return response.data; // Returns { title, thumbnail, duration, formats: [...] }
+    } catch (e) {
+      print("Failed to fetch info: $e");
+      return null;
+    }
+  }
+
+  // Updated method signature to accept optional formatId and qualityName
+  Future<void> startNewDownload(String originalUrl, {String? formatId, String qualityName = 'Best'}) async {
     print("--- DEBUG: startNewDownload triggered! ---");
     
     // 1. Request Gallery Permission first
@@ -33,9 +49,9 @@ class DownloadProvider extends ChangeNotifier {
     final itemId = DateTime.now().millisecondsSinceEpoch.toString();
     final newItem = DownloadItem(
       id: itemId,
-      title: 'Extracting video...',
-      format: '...',
-      resolution: '...',
+      title: 'Processing on server...', 
+      format: 'MP4',
+      resolution: qualityName, // Uses the quality chosen from the Bottom Sheet
       fileSize: '...',
       thumbnail: '',
       progress: 0.0,
@@ -45,46 +61,53 @@ class DownloadProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print("--- DEBUG: Sending request to Vercel... ---");
-      // 3. Ask your Vercel API for the direct MP4 link
-      final response = await _dio.post(
-        _apiUrl,
-        data: {'url': originalUrl},
-      );
-
-      final extractedData = response.data;
-      final downloadUrl = extractedData['downloadUrl'];
-      final title = extractedData['title'];
-
-      // Update UI with real title
-      _updateItemTitle(itemId, title);
-
-      // 4. Determine where to temporarily save the file
-      final tempDir = await getTemporaryDirectory();
-      // Clean up the title to make a safe file name
-      final safeTitle = title.toString().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_').substring(0, 10);
-      final savePath = '${tempDir.path}/${safeTitle}_$itemId.mp4';
-
-      // 5. Download the actual Video File!
-      await _dio.download(
-        downloadUrl,
-        savePath,
-        onReceiveProgress: (received, total) {
-          if (total != -1) {
-            // Update the progress bar in real-time
-            _updateItemProgress(itemId, received / total);
-          }
-        },
-      );
-
-      // 6. Save to the Phone's Gallery
-      await Gal.putVideo(savePath);
+      print("--- DEBUG: Asking custom backend to download via yt-dlp... ---");
       
-      // Delete the temp file to save phone storage
-      File(savePath).deleteSync();
+      // 3. Ask your Node.js backend to download and merge the video
+      final serverResponse = await _dio.post(
+        '$_backendUrl/download',
+        data: {
+          'url': originalUrl,
+          if (formatId != null) 'format_id': formatId // Sends the specific quality ID to the backend
+        },
+        options: Options(receiveTimeout: const Duration(minutes: 10)), 
+      );
 
-      // UI update: Done!
-      _updateItemTitle(itemId, '✅ Saved to Gallery: $title');
+      if (serverResponse.statusCode == 200 && serverResponse.data['success'] == true) {
+        
+        final String fileUrlFromBackend = serverResponse.data['fileUrl'];
+        // Convert localhost to 10.0.2.2 so the Android emulator can find the file
+        final String actualDownloadUrl = fileUrlFromBackend.replaceAll('localhost', '192.168.0.121');
+        
+        _updateItemTitle(itemId, 'Transferring to phone...');
+
+        // 4. Determine where to temporarily save the file
+        final tempDir = await getTemporaryDirectory();
+        final savePath = '${tempDir.path}/video_$itemId.mp4';
+
+        // 5. Download from your Node.js server to the Flutter app
+        await _dio.download(
+          actualDownloadUrl,
+          savePath,
+          onReceiveProgress: (received, total) {
+            if (total != -1) {
+              // Update the progress bar in real-time
+              _updateItemProgress(itemId, received / total);
+            }
+          },
+        );
+
+        // 6. Save to the Phone's Gallery
+        await Gal.putVideo(savePath);
+        
+        // Delete the temp file to save phone storage
+        File(savePath).deleteSync();
+
+        // UI update: Done!
+        _updateItemTitle(itemId, '✅ Saved to Gallery');
+      } else {
+        throw Exception("Backend failed to process video");
+      }
 
     } catch (e) {
       print("Download Error: $e");
