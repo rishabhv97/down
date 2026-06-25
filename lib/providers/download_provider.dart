@@ -14,16 +14,20 @@ class DownloadProvider extends ChangeNotifier {
   // Use 10.0.2.2 for Android Emulator, or your computer's local IP (e.g., 192.168.x.x) for physical devices
   final String _backendUrl = 'http://192.168.0.121:3000';
 
+  
+
   List<DownloadItem> get activeDownloads => _activeDownloads;
 
   // NEW METHOD: Fetch video info without downloading
-  Future<Map<String, dynamic>?> getVideoInfo(String url) async {
+ Future<Map<String, dynamic>?> getVideoInfo(String url) async {
     try {
       final response = await _dio.post(
         '$_backendUrl/info',
         data: {'url': url},
+        // 2. Add the bypass header so Localtunnel doesn't block the API!
+        options: Options(headers: {"Bypass-Tunnel-Reminder": "true"}),
       );
-      return response.data; // Returns { title, thumbnail, duration, formats: [...] }
+      return response.data;
     } catch (e) {
       print("Failed to fetch info: $e");
       return null;
@@ -64,34 +68,36 @@ class DownloadProvider extends ChangeNotifier {
       print("--- DEBUG: Asking custom backend to download via yt-dlp... ---");
       
       // 3. Ask your Node.js backend to download and merge the video
+      // 3. Add the bypass header to the download request too
       final serverResponse = await _dio.post(
         '$_backendUrl/download',
         data: {
           'url': originalUrl,
-          if (formatId != null) 'format_id': formatId // Sends the specific quality ID to the backend
+          if (formatId != null) 'format_id': formatId 
         },
-        options: Options(receiveTimeout: const Duration(minutes: 10)), 
+        options: Options(
+          receiveTimeout: const Duration(minutes: 10),
+          headers: {"Bypass-Tunnel-Reminder": "true"}, // ADD THIS HERE
+        ), 
       );
 
       if (serverResponse.statusCode == 200 && serverResponse.data['success'] == true) {
         
-        final String fileUrlFromBackend = serverResponse.data['fileUrl'];
-        // Convert localhost to 10.0.2.2 so the Android emulator can find the file
-        final String actualDownloadUrl = fileUrlFromBackend.replaceAll('localhost', '192.168.0.121');
+        // 4. You can remove the 'localhost' replaceAll workaround since we have a real URL now
+        final String actualDownloadUrl = serverResponse.data['fileUrl'];
         
         _updateItemTitle(itemId, 'Transferring to phone...');
 
-        // 4. Determine where to temporarily save the file
         final tempDir = await getTemporaryDirectory();
         final savePath = '${tempDir.path}/video_$itemId.mp4';
 
-        // 5. Download from your Node.js server to the Flutter app
+        // 5. Add the bypass header to the final file download
         await _dio.download(
           actualDownloadUrl,
           savePath,
+          options: Options(headers: {"Bypass-Tunnel-Reminder": "true"}), // ADD THIS HERE
           onReceiveProgress: (received, total) {
             if (total != -1) {
-              // Update the progress bar in real-time
               _updateItemProgress(itemId, received / total);
             }
           },
@@ -121,7 +127,16 @@ class DownloadProvider extends ChangeNotifier {
   void _updateItemProgress(String id, double progress) {
     final index = _activeDownloads.indexWhere((item) => item.id == id);
     if (index != -1) {
-      _activeDownloads[index].progress = progress;
+      // Re-create the item to safely trigger Flutter UI updates
+      _activeDownloads[index] = DownloadItem(
+        id: _activeDownloads[index].id,
+        title: _activeDownloads[index].title,
+        format: _activeDownloads[index].format,
+        resolution: _activeDownloads[index].resolution,
+        fileSize: _activeDownloads[index].fileSize,
+        thumbnail: _activeDownloads[index].thumbnail,
+        progress: progress, // Update just this field
+      );
       notifyListeners();
     }
   }
@@ -137,6 +152,7 @@ class DownloadProvider extends ChangeNotifier {
         fileSize: _activeDownloads[index].fileSize,
         thumbnail: _activeDownloads[index].thumbnail,
         progress: _activeDownloads[index].progress,
+        
       );
       notifyListeners();
     }
